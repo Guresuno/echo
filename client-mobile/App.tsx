@@ -22,11 +22,13 @@ import {
   Mic,
   ShieldAlert,
   X,
+  Smile,
 } from 'lucide-react-native';
 import { getMobileHardwareId, getMobilePlatformType } from './src/services/hardwareId';
 import { QRScannerModal } from './src/components/QRScannerModal';
 import { DeviceStatusBadge } from './src/components/DeviceStatusBadge';
 import { SkiaAnimationStudio } from './src/components/SkiaAnimationStudio';
+import { MobileEmojiModal } from './src/components/MobileEmojiModal';
 
 const API_BASE = 'http://192.168.10.213:8000';
 
@@ -42,6 +44,7 @@ export default function App() {
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showStudio, setShowStudio] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Initialize and auto-login
   useEffect(() => {
@@ -331,6 +334,13 @@ export default function App() {
           style={styles.input}
         />
 
+        <TouchableOpacity
+          style={styles.micBtn}
+          onPress={() => setShowEmojiPicker(true)}
+        >
+          <Smile size={20} color="#949ba4" />
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={sendMessage} style={styles.sendBtn}>
           <Send size={18} color="#ffffff" />
         </TouchableOpacity>
@@ -387,6 +397,13 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      {/* Mobile Emoji Picker Modal */}
+      <MobileEmojiModal
+        visible={showEmojiPicker}
+        onClose={() => setShowEmojiPicker(false)}
+        onSelectEmoji={(emoji) => setInputText((prev) => prev + emoji)}
+      />
     </SafeAreaView>
   );
 }

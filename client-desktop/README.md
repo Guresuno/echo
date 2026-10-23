@@ -98,6 +98,15 @@ client-desktop/
 ### `src/components/DeviceStatusBadge.tsx`
 * **Propósito:** Renderizado de badges de estado e indicador de dispositivo del usuario (`PC_DESKTOP`, `ANDROID_PHONE`, `IOS_PHONE`, `TABLET_IPAD`, `WEB_BROWSER`).
 
+### `src/components/EmojiPicker.tsx` & `src/components/emojiData.ts`
+* **Propósito:** Selector y buscador de emojis por defecto (estilo PiliApp y Discord) y stickers personalizados.
+* **Funciones:**
+  - **Catálogo Organizado:** Categorías completas (Caritas y Gestos, Animales y Naturaleza, Comida y Bebida, Actividades y Deportes, Objetos y Símbolos).
+  - **Búsqueda Instantánea:** Búsqueda en tiempo real mediante palabras clave en español (ej. "risa", "corazon", "fuego", "dolar").
+  - **Emojis Recientes:** Persistencia en `localStorage` de los últimos emojis utilizados para acceso veloz.
+  - **Barra de Previsualización:** Muestra el emoji seleccionado en tamaño ampliado junto con su nombre descriptivo.
+  - **Pestaña de Stickers:** Permite alternar entre emojis estándar Unicode y los stickers animados/personalizados del servidor.
+
 ### `src/services/hardwareId.ts`
 * **Propósito:** Extracción de la huella digital única del dispositivo.
 * **Mecanismo:** En Tauri, invoca comandos nativos de Rust para consultar el `MachineGuid` de Windows o el UUID de la placa madre. En el navegador web, genera un UUID criptográfico persistente en `localStorage`.

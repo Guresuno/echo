@@ -6,6 +6,7 @@ import { wsService } from '../services/websocket';
 import { DeviceStatusBadge } from './DeviceStatusBadge';
 import { WaveformAudioPlayer, VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { UserProfilePopover } from './UserProfilePopover';
+import { EmojiPicker } from './EmojiPicker';
 
 interface ChatViewProps {
   channel: Channel;
@@ -257,55 +258,23 @@ export const ChatView: React.FC<ChatViewProps> = ({ channel, currentUser, onOpen
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Asset Picker Popover (Emojis & Stickers) */}
+      {/* Comprehensive Categorized Emoji & Sticker Picker (PiliApp & Discord style) */}
       {showAssetPicker && (
-        <div className="absolute bottom-16 right-6 w-80 bg-discord-darkest rounded-2xl p-4 border border-white/10 shadow-2xl z-30 animate-in fade-in zoom-in-95">
-          <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
-            <span className="text-xs font-bold text-discord-white">Stickers & Emojis del Servidor</span>
-            <button
-              onClick={() => setShowAssetPicker(false)}
-              className="text-discord-channel hover:text-white text-xs"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2 max-h-56 overflow-y-auto p-1">
-            {customAssets.map((asset) => (
-              <button
-                key={asset.AssetID}
-                onClick={() => {
-                  if (asset.AssetType === 'STICKER') {
-                    sendSticker(asset);
-                  } else {
-                    setInputText((prev) => `${prev} :${asset.Shortcode}: `);
-                    setShowAssetPicker(false);
-                  }
-                }}
-                className="aspect-square bg-discord-dark hover:bg-discord-hover rounded-xl p-1.5 flex flex-col items-center justify-center transition-all hover:scale-110 border border-white/5"
-                title={`:${asset.Shortcode}:`}
-              >
-                <img
-                  src={asset.FileURL.startsWith('http') ? asset.FileURL : `http://localhost:8000${asset.FileURL}`}
-                  alt={asset.Shortcode}
-                  className="w-full h-full object-contain"
-                />
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-3 pt-2 border-t border-white/5 flex justify-center">
-            <button
-              onClick={() => {
-                setShowAssetPicker(false);
-                onOpenStudio();
-              }}
-              className="text-xs text-discord-blurple font-semibold hover:underline flex items-center gap-1"
-            >
-              <Sparkles className="w-3.5 h-3.5" /> Crear uno nuevo en el Estudio
-            </button>
-          </div>
-        </div>
+        <EmojiPicker
+          onSelectEmoji={(emoji) => {
+            setInputText((prev) => `${prev} ${emoji} `);
+          }}
+          onSelectCustomAsset={(asset) => {
+            if (asset.AssetType === 'STICKER') {
+              sendSticker(asset);
+            } else {
+              setInputText((prev) => `${prev} :${asset.Shortcode}: `);
+            }
+          }}
+          customAssets={customAssets}
+          onOpenStudio={onOpenStudio}
+          onClose={() => setShowAssetPicker(false)}
+        />
       )}
 
       {/* Input Box Footer */}

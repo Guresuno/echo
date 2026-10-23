@@ -65,6 +65,14 @@ client-mobile/
   - Efecto de piel de cebolla (*Onion skin*) para dibujar con referencia al fotograma previo.
   - Exportación de stickers WebP listos para enviar en el chat.
 
+### `src/components/MobileEmojiModal.tsx`
+* **Propósito:** Selector y modal táctil inferior de emojis predeterminados categorizados (estilo PiliApp).
+* **Funciones:**
+  - Despliega una hoja modal inferior (*bottom-sheet*) optimizada para móviles.
+  - Pestañas de categorías con iconos representativos (Caritas, Animales, Comida, Actividades, Objetos/Símbolos).
+  - Barra de búsqueda integrada por palabras clave en español.
+  - Inserción táctil directa en el campo de texto del chat.
+
 ### `src/services/hardwareId.ts`
 * **Propósito:** Identificación única del dispositivo físico.
 * **Implementación:**
