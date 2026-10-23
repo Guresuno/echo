@@ -1,0 +1,134 @@
+name: Release & Build Cross-Platform Artifacts
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 1. Compilar APK Nativo de Android
+  # --------------------------------------------------------------------------
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'client-mobile/package-lock.json'
+
+      - name: Instalar Dependencias de client-mobile
+        working-directory: ./client-mobile
+        run: npm install --legacy-peer-deps
+
+      - name: Ejecutar Expo Prebuild (Android)
+        working-directory: ./client-mobile
+        run: npx expo prebuild --platform android --clean
+
+      - name: Configurar Permisos de Gradle Wrapper
+        working-directory: ./client-mobile/android
+        run: chmod +x gradlew
+
+      - name: Compilar APK Release con Gradle
+        working-directory: ./client-mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Subir APK como Artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: echo-android-apk
+          path: client-mobile/android/app/build/outputs/apk/release/*.apk
+
+  # --------------------------------------------------------------------------
+  # 2. Compilar Ejecutable Nativo de Windows (Tauri)
+  # --------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows Desktop (.exe / .msi)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'client-desktop/package-lock.json'
+
+      - name: Configurar Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Instalar Dependencias de client-desktop
+        working-directory: ./client-desktop
+        run: npm install
+
+      - name: Compilar App con Tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: ./client-desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Echo ${{ github.ref_name }}'
+          releaseBody: 'Nueva versión oficial de Echo multiplataforma.'
+          releaseDraft: false
+          prerelease: false
+
+  # --------------------------------------------------------------------------
+  # 3. Publicar Release en GitHub con todos los binarios
+  # --------------------------------------------------------------------------
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-android]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Código
+        uses: actions/checkout@v4
+
+      - name: Descargar Artefacto de Android
+        uses: actions/download-artifact@v4
+        with:
+          name: echo-android-apk
+          path: ./android-artifacts
+
+      - name: Crear GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'Echo ${{ github.ref_name }}'
+          body: |
+            ## Echo - Plataforma de Comunicación Privada en Tiempo Real
+            
+            ### Novedades de la versión:
+            * Cliente móvil Android nativo con WebRTC LiveKit, Skia y notas de voz Opus.
+            * Cliente de escritorio Windows con soporte para atajos de sistema y baja latencia.
+            * Interfaz web responsiva con menú lateral deslizante (*drawer*) para teléfonos móviles.
+            
+            ### Descargas:
+            * **Android:** Descarga el archivo `.apk` adjunto para instalar directamente en cualquier teléfono.
+            * **Windows:** Descarga el instalador `.msi` o `.exe`.
+          files: |
+            ./android-artifacts/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

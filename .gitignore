@@ -1,0 +1,71 @@
+# ==============================================================================
+# ECHO - Git Ignore Rules
+# ==============================================================================
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Python Virtual Environments & Cache
+backend/.venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+*.db
+backend/echo.db
+
+# Environment & Local Secrets
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+*.local
+out/
+
+# Android Native Artifacts & Gradle
+.gradle/
+client-mobile/android/.gradle/
+client-mobile/android/build/
+client-mobile/android/app/build/
+client-mobile/android/local.properties
+client-mobile/android/app/src/main/assets/index.android.bundle
+*.apk
+*.aab
+*.ap_
+
+# iOS Native Artifacts & Xcode
+client-mobile/ios/build/
+client-mobile/ios/Pods/
+*.ipa
+
+# Expo & Metro
+client-mobile/.expo/
+.expo/
+*.tsbuildinfo
+
+# Tauri & Rust
+client-desktop/src-tauri/target/
+target/
+
+# Local media uploads & logs
+backend/uploads/*
+!backend/uploads/.gitkeep
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

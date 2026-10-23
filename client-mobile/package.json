@@ -1,0 +1,32 @@
+{
+  "name": "echo-mobile",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "prebuild": "expo prebuild --clean"
+  },
+  "dependencies": {
+    "@livekit/react-native": "^2.6.0",
+    "@livekit/react-native-webrtc": "^144.1.2",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@shopify/react-native-skia": "1.2.3",
+    "expo": "~51.0.0",
+    "expo-application": "~5.9.1",
+    "expo-av": "~14.0.5",
+    "expo-camera": "~15.0.13",
+    "expo-secure-store": "~13.0.2",
+    "expo-status-bar": "~1.12.1",
+    "lucide-react-native": "^0.475.0",
+    "react": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-svg": "15.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/react": "~18.2.45",
+    "typescript": "~5.3.3"
+  },
+  "private": true
+}

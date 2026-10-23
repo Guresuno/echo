@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Echo",
+    "slug": "echo-mobile",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e1f22"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.echo.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Echo necesita acceso a la cámara para escanear códigos QR de inicio de sesión y transmitir video.",
+        "NSMicrophoneUsageDescription": "Echo necesita acceso al micrófono para llamadas de voz y notas de audio en alta fidelidad."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e1f22"
+      },
+      "package": "com.echo.mobile",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir a Echo usar la cámara para escanear códigos QR."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Permitir a Echo grabar notas de voz Opus."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "scheme": "miapp"
+  }
+}
