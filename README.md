@@ -23,6 +23,8 @@
 | **Notas de Voz Opus** | Grabación en Opus 48 kHz con generación de 40 muestras de amplitud y reproductor con *seek* interactivo | HTML5 Audio + FFmpeg + Web Audio API |
 | **Permisos Bitwise** | Matriz de 10 permisos de seguridad evaluados en microsegundos sobre columnas `BIGINT` | Bitmask 64-bit |
 | **Estudio de Animación** | Dibujo cuadro por cuadro con sensibilidad a presión, papel cebolla y borde blanco troquelado | Canvas 2D + Shopify Skia GPU |
+| **Modo P2P Directo (Offline)** | Llamadas de voz/video y DMs punto a punto (WebRTC DataChannel) cuando el servidor está desconectado | WebRTC Nativo + STUN Serverless |
+| **Hospedaje Local (LAN)** | Lanzamiento en 1-clic con detección automática de IP para conectar celulares y PCs en la misma Wi-Fi | FastAPI + Vite (`start-pc.bat`) |
 | **Diseño Responsivo** | Menú desplegable (*slide-over drawer*) con botón hamburguesa adaptado a pantallas móviles verticales | TailwindCSS + React |
 | **Multiplataforma** | Cliente Desktop Windows nativo (.exe), Web SPA y Cliente Móvil Android nativo (.apk) | Tauri (Rust) + React Native Prebuild |
 
@@ -67,6 +69,7 @@ Echo/
 Cada sub-módulo cuenta con su propio archivo de documentación que describe cómo funciona cada archivo individualmente:
 
 * 📖 **[Arquitectura Global y Protocolos](docs/ARCHITECTURE.md):** Diagramas de secuencia de Auto-Login, QR Login, SFU WebRTC y matriz de permisos bitwise.
+* 📖 **[Hospedaje Local y Modo P2P Directo](docs/LOCAL_HOSTING_AND_P2P.md):** Guía completa para correr Echo en tu PC/Wi-Fi y cómo funcionan las llamadas y mensajes P2P sin servidor.
 * 📖 **[Documentación del Backend (FastAPI)](backend/README.md):** Explicación de endpoints, WebSockets, base de datos y servicios.
 * 📖 **[Documentación del Cliente Desktop (Tauri)](client-desktop/README.md):** Explicación de componentes React, manejo de estado y empaquetado `.exe`.
 * 📖 **[Documentación del Cliente Móvil (React Native)](client-mobile/README.md):** Explicación de la compilación nativa en Android/iOS, Skia y cámara.

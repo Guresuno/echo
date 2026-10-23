@@ -9,7 +9,8 @@ import { VoiceVideoRoom } from './components/VoiceVideoRoom';
 import { QRLoginScreen } from './components/QRLoginScreen';
 import { AccountSwitcher } from './components/AccountSwitcher';
 import { AnimationStudio } from './studio/AnimationStudio';
-import { QrCode, LogIn, UserPlus } from 'lucide-react';
+import { P2PDirectModal } from './components/P2PDirectModal';
+import { QrCode, LogIn, UserPlus, Radio, WifiOff } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -26,6 +27,8 @@ export const App: React.FC = () => {
   const [showQRLogin, setShowQRLogin] = useState(false);
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const [showStudio, setShowStudio] = useState(false);
+  const [showP2PModal, setShowP2PModal] = useState(false);
+  const [isBackendOffline, setIsBackendOffline] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
 
@@ -59,6 +62,7 @@ export const App: React.FC = () => {
         vault.saveAccount(res.User, res.AccessToken, res.RefreshToken, true);
         handleLoginSuccess(res.User, res.AccessToken);
       } catch {
+        setIsBackendOffline(true);
         // Check local vault backup account
         const saved = vault.getActiveAccount();
         if (saved) {
@@ -87,11 +91,13 @@ export const App: React.FC = () => {
     try {
       const srvs = await api.listServers();
       setServers(srvs);
+      setIsBackendOffline(false);
       if (srvs.length > 0) {
         selectServer(srvs[0]);
       }
     } catch (e) {
-      console.error('Failed to load servers:', e);
+      console.warn('Failed to load servers, backend might be offline:', e);
+      setIsBackendOffline(true);
     }
   };
 
@@ -155,67 +161,88 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen flex bg-discord-darkest text-discord-text overflow-hidden select-none">
-      {/* Main Workspace Layout */}
-      {currentUser && (
-        <>
-          <ServerSidebar
-            servers={servers}
-            activeServer={activeServer}
-            onSelectServer={selectServer}
-            channels={channels}
-            activeChannel={activeChannel}
-            onSelectChannel={setActiveChannel}
-            currentUser={currentUser}
-            isMobileOpen={isMobileDrawerOpen}
-            onCloseMobile={() => setIsMobileDrawerOpen(false)}
-            onOpenAccountSwitcher={() => setShowAccountSwitcher(true)}
-            onCreateServer={async () => {
-              const name = prompt('Nombre del nuevo servidor:');
-              if (name) {
-                const s = await api.createServer(name);
-                setServers((prev) => [...prev, s]);
-                selectServer(s);
-              }
-            }}
-            onCreateChannel={async () => {
-              if (!activeServer) return;
-              const name = prompt('Nombre del canal:');
-              if (name) {
-                const isVoice = confirm('¿Crear como canal de voz/video? (Aceptar = Voz, Cancelar = Texto)');
-                const c = await api.createChannel(activeServer.ServerID, name, isVoice ? 'VOICE_VIDEO' : 'TEXT');
-                setChannels((prev) => [...prev, c]);
-                setActiveChannel(c);
-              }
-            }}
-          />
-
-          {/* Active Channel View */}
-          {activeChannel ? (
-            activeChannel.ChannelType === 'VOICE_VIDEO' ? (
-              <VoiceVideoRoom
-                channel={activeChannel}
-                onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-                onDisconnect={() => {
-                  const firstText = channels.find((c) => c.ChannelType === 'TEXT');
-                  if (firstText) setActiveChannel(firstText);
-                }}
-              />
-            ) : (
-              <ChatView
-                channel={activeChannel}
-                currentUser={currentUser}
-                onOpenStudio={() => setShowStudio(true)}
-                onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-              />
-            )
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center bg-discord-light text-discord-channel">
-              <p className="text-sm">Selecciona o crea un canal para comenzar a chatear.</p>
-            </div>
-          )}
-        </>
+    <div className="h-screen w-screen flex flex-col bg-discord-darkest text-discord-text overflow-hidden select-none">
+      {/* Offline Alert Ribbon */}
+      {isBackendOffline && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between text-xs text-amber-200 z-40">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-amber-400" />
+            <span>Servidor central no detectado. Modo P2P Directo disponible para llamadas y mensajes sin servidor.</span>
+          </div>
+          <button
+            onClick={() => setShowP2PModal(true)}
+            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+          >
+            <Radio className="w-3.5 h-3.5" />
+            Abrir P2P Directo
+          </button>
+        </div>
       )}
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main Workspace Layout */}
+        {currentUser && (
+          <>
+            <ServerSidebar
+              servers={servers}
+              activeServer={activeServer}
+              onSelectServer={selectServer}
+              channels={channels}
+              activeChannel={activeChannel}
+              onSelectChannel={setActiveChannel}
+              currentUser={currentUser}
+              isMobileOpen={isMobileDrawerOpen}
+              onCloseMobile={() => setIsMobileDrawerOpen(false)}
+              onOpenAccountSwitcher={() => setShowAccountSwitcher(true)}
+              onOpenP2P={() => setShowP2PModal(true)}
+              onCreateServer={async () => {
+                const name = prompt('Nombre del nuevo servidor:');
+                if (name) {
+                  const s = await api.createServer(name);
+                  setServers((prev) => [...prev, s]);
+                  selectServer(s);
+                }
+              }}
+              onCreateChannel={async () => {
+                if (!activeServer) return;
+                const name = prompt('Nombre del canal:');
+                if (name) {
+                  const isVoice = confirm('¿Crear como canal de voz/video? (Aceptar = Voz, Cancelar = Texto)');
+                  const c = await api.createChannel(activeServer.ServerID, name, isVoice ? 'VOICE_VIDEO' : 'TEXT');
+                  setChannels((prev) => [...prev, c]);
+                  setActiveChannel(c);
+                }
+              }}
+            />
+
+            {/* Active Channel View */}
+            {activeChannel ? (
+              activeChannel.ChannelType === 'VOICE_VIDEO' ? (
+                <VoiceVideoRoom
+                  channel={activeChannel}
+                  onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
+                  onOpenP2P={() => setShowP2PModal(true)}
+                  onDisconnect={() => {
+                    const firstText = channels.find((c) => c.ChannelType === 'TEXT');
+                    if (firstText) setActiveChannel(firstText);
+                  }}
+                />
+              ) : (
+                <ChatView
+                  channel={activeChannel}
+                  currentUser={currentUser}
+                  onOpenStudio={() => setShowStudio(true)}
+                  onToggleMobileDrawer={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
+                />
+              )
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center bg-discord-light text-discord-channel">
+                <p className="text-sm">Selecciona o crea un canal para comenzar a chatear.</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Auth Modal (Login / Register / QR Login) */}
       {showAuthModal && (
@@ -300,14 +327,24 @@ export const App: React.FC = () => {
                 </button>
               </form>
 
-              {/* QR Code Login Button (Section 2.3) */}
-              <div className="mt-5 pt-4 border-t border-white/10">
+              {/* QR Code Login Button & P2P Direct Button */}
+              <div className="mt-5 pt-4 border-t border-white/10 space-y-2">
                 <button
+                  type="button"
                   onClick={() => setShowQRLogin(true)}
                   className="w-full py-2.5 bg-discord-dark hover:bg-discord-hover text-discord-white text-xs font-semibold rounded-xl flex items-center justify-center gap-2 border border-white/5 transition-all shadow-sm"
                 >
                   <QrCode className="w-4 h-4 text-discord-blurple" />
                   Iniciar Sesión con Código QR (Móvil)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowP2PModal(true)}
+                  className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 border border-emerald-500/20 transition-all shadow-sm"
+                >
+                  <Radio className="w-4 h-4 animate-pulse text-emerald-400" />
+                  Modo P2P Directo (Llamadas y Chat Sin Servidor)
                 </button>
               </div>
 
@@ -369,6 +406,13 @@ export const App: React.FC = () => {
           }}
         />
       )}
+
+      {/* P2P Direct Modal (Serverless WebRTC Calls & DMs) */}
+      <P2PDirectModal
+        isOpen={showP2PModal}
+        onClose={() => setShowP2PModal(false)}
+        currentUserName={currentUser?.DisplayName || currentUser?.Username || 'Usuario Echo'}
+      />
     </div>
   );
 };

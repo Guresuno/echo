@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hash, Volume2, Plus, Users, Settings, Mic, Headphones } from 'lucide-react';
+import { Hash, Volume2, Plus, Users, Settings, Mic, Headphones, Radio } from 'lucide-react';
 import { Server, Channel, User } from '../types';
 import { DeviceStatusBadge } from './DeviceStatusBadge';
 
@@ -14,6 +14,7 @@ interface ServerSidebarProps {
   onOpenAccountSwitcher: () => void;
   onCreateServer: () => void;
   onCreateChannel: () => void;
+  onOpenP2P?: () => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -29,6 +30,7 @@ export const ServerSidebar: React.FC<ServerSidebarProps> = ({
   onOpenAccountSwitcher,
   onCreateServer,
   onCreateChannel,
+  onOpenP2P,
   isMobileOpen = false,
   onCloseMobile,
 }) => {
@@ -62,6 +64,19 @@ export const ServerSidebar: React.FC<ServerSidebarProps> = ({
             <span className="font-bold text-lg">E</span>
           </div>
         </div>
+
+        {/* P2P Direct Button (Offline / Serverless Calls & Chat) */}
+        {onOpenP2P && (
+          <div
+            onClick={onOpenP2P}
+            className="relative group cursor-pointer flex items-center justify-center w-full"
+            title="Llamadas y Chat P2P Directo (Sin Servidor)"
+          >
+            <div className="w-12 h-12 rounded-[24px] group-hover:rounded-[16px] bg-emerald-500/15 hover:bg-emerald-600 text-emerald-400 hover:text-white flex items-center justify-center transition-all duration-200 shadow-md border border-emerald-500/30">
+              <Radio className="w-5 h-5 animate-pulse" />
+            </div>
+          </div>
+        )}
 
         <div className="w-8 h-[2px] bg-white/10 rounded-full my-1" />
 

@@ -8,9 +8,10 @@ interface VoiceVideoRoomProps {
   channel: Channel;
   onDisconnect: () => void;
   onToggleMobileDrawer?: () => void;
+  onOpenP2P?: () => void;
 }
 
-export const VoiceVideoRoom: React.FC<VoiceVideoRoomProps> = ({ channel, onDisconnect, onToggleMobileDrawer }) => {
+export const VoiceVideoRoom: React.FC<VoiceVideoRoomProps> = ({ channel, onDisconnect, onToggleMobileDrawer, onOpenP2P }) => {
   const [room, setRoom] = useState<Room | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
@@ -18,6 +19,7 @@ export const VoiceVideoRoom: React.FC<VoiceVideoRoomProps> = ({ channel, onDisco
   const [isDeafened, setIsDeafened] = useState(false);
   const [isPushToTalkActive, setIsPushToTalkActive] = useState(false);
   const [participants, setParticipants] = useState<string[]>([]);
+  const [isServerOffline, setIsServerOffline] = useState(false);
 
   const videoContainerRef = useRef<HTMLDivElement | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -71,6 +73,7 @@ export const VoiceVideoRoom: React.FC<VoiceVideoRoomProps> = ({ channel, onDisco
       } catch (err) {
         console.warn('LiveKit connection fallback:', err);
         setParticipants(['Tú (Conectado)']);
+        setIsServerOffline(true);
       }
     };
 
@@ -172,6 +175,22 @@ export const VoiceVideoRoom: React.FC<VoiceVideoRoomProps> = ({ channel, onDisco
           </span>
         </div>
       </div>
+
+      {/* Banner de Servidor Desconectado */}
+      {isServerOffline && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between text-xs text-amber-200">
+          <span>⚠️ Servidor de llamadas SFU desconectado. Puedes comunicarte directamente punto a punto.</span>
+          {onOpenP2P && (
+            <button
+              onClick={onOpenP2P}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              Conectar P2P Directo
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Video & Screen Streams Grid */}
       <div
