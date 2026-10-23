@@ -28,6 +28,7 @@ dist-ssr/
 build/
 *.local
 out/
+cloudflared.exe
 
 # Android Native Artifacts & Gradle
 .gradle/

@@ -1,107 +1,82 @@
-# Guía de Hospedaje Local (Self-Hosting) y Modo P2P Directo (Sin Servidor)
+# Guía de Red Virtual VPN, Hospedaje y Conexión Multi-Red
 
-Esta guía explica en detalle cómo hospedar **Echo** en tu propia computadora o red local (LAN/Wi-Fi) y cómo funciona el **Modo P2P Directo (Peer-to-Peer)** para realizar **llamadas de voz/video y enviar mensajes directos (DMs) incluso si el servidor central está completamente apagado o desconectado**.
-
----
-
-## 1. Hospedar Echo Localmente (En tu PC / Red Hogareña)
-
-Echo está diseñado con una arquitectura **Zero-Configuration** capaz de funcionar en dos modalidades según los recursos de tu equipo:
-
-### Modo A: Standalone Ligero (Recomendado para PC Hogareña, Sin Docker)
-En este modo, Echo no requiere Docker ni servicios externos:
-* **Base de Datos:** SQLite local integrado (`backend/echo.db`).
-* **Presencia y Sesiones:** Fallback en memoria RAM con expiración TTL automática.
-* **Archivos y Notas de Voz:** Almacenamiento local en disco (`backend/uploads/`).
-* **Llamadas y Video:** Fallback directo WebRTC P2P integrado.
-
-#### ¿Cómo iniciarlo con un solo clic?
-1. Haz doble clic en el archivo **`start-pc.bat`** (o ejecuta `.\start-pc.ps1` en PowerShell).
-2. El script detectará automáticamente la dirección IP de tu red Wi-Fi o Ethernet (ejemplo: `192.168.1.45`).
-3. Se abrirán automáticamente dos ventanas:
-   * **Backend:** En el puerto `8000` (`http://0.0.0.0:8000`).
-   * **Cliente Web/Desktop:** En el puerto `5173` (`http://0.0.0.0:5173`).
-4. **Para conectar otros dispositivos de tu casa (celulares, tablets u otras PCs):**
-   * Abre el navegador en el otro dispositivo e ingresa a: `http://<TU_IP_LOCAL>:5173`
-   * O descarga e instala el archivo nativo `.apk` en tu celular Android.
+Esta guía detalla cómo **Echo funciona como su propia Red Virtual Privada (Mesh VPN)** para conectar dispositivos que se encuentran en **redes completamente distintas** (por ejemplo: un teléfono en datos 4G/5G, una PC en la oficina y otra en casa con diferente Wi-Fi), sin necesidad de instalar programas VPN de terceros (como Hamachi, ZeroTier o Tailscale) ni abrir puertos en el router.
 
 ---
 
-### Modo B: Infraestructura Completa con Docker (Para Servidores Dedicados)
-Si dispones de Docker Desktop y deseas persistencia en Microsoft SQL Server, Redis y LiveKit SFU:
-```bash
-# 1. Levantar contenedores de infraestructura
-docker compose -f docker/docker-compose.yml up -d
+## 1. Conexión de Dispositivos en Distintas Redes
 
-# 2. Iniciar Echo normalmente
-start-pc.bat
-```
+Echo ofrece dos soluciones integradas según la necesidad de comunicación:
+
+| Necesidad | Solución Echo | Script o Función | ¿Requiere Router/Puertos? |
+| :--- | :--- | :--- | :--- |
+| **Llamadas y Chat P2P Directo por Internet** | **Echo Mesh VPN** (WebRTC UDP Hole Punching) | Dentro de la App (`P2P Directo`) | **No** (Cero configuración) |
+| **Compartir el Servidor Echo Completo por Internet** | **Túnel Seguro Global** (Cloudflare Tunnel) | `start-global.bat` | **No** (Cero configuración) |
+| **Uso exclusivo en la misma casa / oficina** | **Hospedaje Local LAN** | `start-pc.bat` | **No** (Solo Wi-Fi local) |
 
 ---
 
-## 2. Modo P2P Directo (Llamadas y Mensajes Sin Servidor)
+## 2. Echo Mesh VPN (Red Virtual P2P Integrada)
 
-Una de las características más potentes de Echo es su resiliencia ante caídas de servidor o cortes de conectividad central:
-
-> [!IMPORTANT]
-> **Si el servidor central se apaga, se cae o se queda sin luz, Echo NO deja de funcionar.** Los usuarios pueden activar el **Modo P2P Directo** para comunicarse de equipo a equipo sin intermediarios.
+Echo incorpora un motor de red superpuesta (*overlay mesh network*) basado en WebRTC nativo y servidores STUN/TURN de alta disponibilidad (Google STUN + OpenRelay TURN Project).
 
 ```
-       CON SERVIDOR CENTRAL (Normal)
-[PC / Móvil A] <─── WebSocket / SFU ───> [Servidor Echo] <─── WebSocket / SFU ───> [PC / Móvil B]
-
-       MODO P2P DIRECTO (Servidor Caído / Desconectado)
-[PC / Móvil A] <═══════════ WebRTC Direct DataChannel + MediaStream ════════════> [PC / Móvil B]
-                                 (Cero Servidores Requeridos)
+                      INTERNET / DIFERENTES REDES
+[Dispositivo A en Datos 4G/5G]                      [Dispositivo B en Wi-Fi Hogar]
+       │                                                         │
+       │─── STUN / UDP Hole Punching (Traspaso de NAT y CGNAT)───│
+       │                                                         │
+       ▼                                                         ▼
+       ╔═════════════════════════════════════════════════════════╗
+       ║   TÚNEL PRIVADO CIFRADO END-TO-END (Echo Mesh VPN)      ║
+       ║  • Llamadas de Voz Opus 48 kHz                          ║
+       ║  • Video HD y Pantalla Compartida a 60 FPS              ║
+       ║  • Mensajes Directos (DMs) por RTCDataChannel           ║
+       ║  • Envío de Archivos y Fotos P2P sin límite de tamaño   ║
+       ╚═════════════════════════════════════════════════════════╝
 ```
 
----
+### ¿Cómo conectar dos dispositivos en redes distintas?
 
-### ¿Cómo funciona la arquitectura P2P?
-
-1. **Mensajes Directos (DMs) por `RTCDataChannel`:**
-   * Los mensajes de texto, reacciones y notas de voz viajan encapsulados en paquetes SCTP encriptados directamente entre ambas máquinas.
-   * Cero registros en bases de datos centralizadas; máxima privacidad y latencia sub-10ms en red local.
-2. **Llamadas de Voz y Video por `RTCPeerConnection`:**
-   * Utiliza el códec Opus a 48 kHz para audio cristalino con cancelación de eco y supresión de ruido.
-   * Transmisión de cámara HD y **pantalla compartida a 60 FPS**.
-3. **Señalización Serverless (Intercambio de Oferta/Respuesta):**
-   * Debido a que no hay servidor central para negociar la sesión SDP, Echo empaqueta la oferta en un **código de invitación Base64** y un **Código QR**.
-
----
-
-### Guía Paso a Paso para Usar el Modo P2P
-
-#### Paso 1: Abrir el Modo P2P
-Puedes abrir la ventana P2P de tres formas:
-1. **Desde la pantalla de Login:** Pulsando el botón verde *"Modo P2P Directo (Llamadas y Chat Sin Servidor)"*.
-2. **Desde la barra lateral:** Haciendo clic en el icono de antena (`Radio`) en el riel de servidores.
-3. **Banner de desconexión:** Si el servidor se apaga mientras usas la app, aparecerá una alerta amarilla arriba con el botón *"Abrir P2P Directo"*.
-
-#### Paso 2: El Anfitrión (Persona A) crea la sala
-1. En la pestaña **"1. Crear Sala (Anfitrión)"**, pulsa **"Generar Código de Conexión P2P"**.
-2. Copia el código generado (o muestra el Código QR en pantalla).
-3. Envía ese código a tu amigo (por WhatsApp, Telegram, correo o mostrándole el QR en persona).
-
-#### Paso 3: El Invitado (Persona B) se une
-1. Abre Echo y ve a la pestaña **"2. Unirse a Sala (Invitado)"**.
-2. Pega el código que te envió el Anfitrión y pulsa **"Generar Mi Código de Respuesta"**.
-3. Copia el código de respuesta generado y devuélveselo al Anfitrión.
-
-#### Paso 4: Conexión Instantánea
-1. El Anfitrión pega la respuesta en su ventana y pulsa **"Conectar y Comenzar Llamada P2P"**.
-2. **¡Listo!** El estado cambiará a `🟢 Conectado P2P En Vivo`. Se activarán automáticamente los videos en pantalla completa, los controles de micrófono, cámara, pantalla compartida y el chat directo.
+1. Abre Echo en ambos dispositivos (PC, laptop, celular o navegador).
+2. Haz clic en el botón de antena (`Radio`) en la barra lateral o en la pantalla de login: **"Modo P2P Directo"**.
+3. En la pestaña **"1. Red Mesh Global (Por Internet / 4G / Cualquier Red)"**:
+   * Cada dispositivo verá su propia dirección de red virtual:
+     `echo-vpn-juan-4821` (puedes copiarla o abrir su Código QR).
+4. El Dispositivo B simplemente escribe o pega el `Node ID` del Dispositivo A en el campo:
+   * **"Pega el Node ID de tu amigo (ej: echo-vpn-juan-4821)"**
+   * Pulsa **"Establecer Túnel P2P (UDP Hole Punching)"**.
+5. **¡Conexión Instantánea!** En menos de un segundo ambos dispositivos traspasan los firewalls y NATs de sus respectivos proveedores de internet (Movistar, Claro, Vodafone, etc.), abriendo la videollamada, el chat privado y la transferencia de archivos directa.
 
 ---
 
-## 3. Matriz de Comparación: Servidor Central vs P2P Directo
+## 3. Hospedar el Servidor Completo para Amigos en Internet (`start-global.bat`)
 
-| Característica | Servidor Central Echo | Modo P2P Directo |
-| :--- | :--- | :--- |
-| **Requiere PC Servidor encendida** | Sí | **No** (Completamente descentralizado) |
-| **Llamadas de Voz y Video** | Sí (LiveKit SFU multiusuario) | **Sí** (WebRTC P2P 1-a-1 de alta fidelidad) |
-| **Compartir Pantalla a 60 FPS** | Sí | **Sí** |
-| **Mensajes Directos (DMs)** | Sí (Persistidos en SQL Server/SQLite) | **Sí** (Efímeros vía `RTCDataChannel`) |
-| **Latencia en Red Local (LAN)** | ~5-15 ms | **< 3 ms** |
-| **Privacidad / Cifrado** | TLS + Base de datos | **Punto a punto (End-to-End)** |
-| **Funciona sin Internet (Aislado)**| Sí (en LAN) | **Sí** (en LAN o conexión directa) |
+Si deseas encender tu servidor Echo local (con todos los canales de texto, canales de voz, roles, emojis personalizados y estudio de animación) y que tus amigos se conecten **desde sus casas o desde sus celulares en la calle con datos móviles**:
+
+1. Haz doble clic en **`start-global.bat`** (o ejecuta `.\start-global.ps1` en PowerShell).
+2. El script iniciará automáticamente:
+   * El Backend FastAPI en `0.0.0.0:8000`.
+   * El Cliente Vite en `0.0.0.0:5173`.
+   * Un túnel seguro de grado empresarial (`cloudflared`) que no requiere cuenta, ni tarjeta, ni abrir puertos en tu router.
+3. En la ventana **"Echo Global Tunnel"** verás una dirección pública segura como:
+   `https://random-words.trycloudflare.com`
+4. Pasa ese enlace a tus amigos: ellos podrán entrar desde cualquier parte del mundo desde su navegador o app móvil y unirse a tu servidor como si estuvieran en tu misma casa.
+
+---
+
+## 4. Hospedaje en Red Local / Hogar (`start-pc.bat`)
+
+Si solo quieres usar Echo con tus familiares o compañeros conectados a la misma red Wi-Fi o cable Ethernet:
+1. Haz doble clic en **`start-pc.bat`**.
+2. El script detectará la IP de tu PC automáticamente (ej: `192.168.1.15`).
+3. Tus familiares pueden entrar escribiendo: `http://192.168.1.15:5173` en su navegador o celular.
+4. Funciona en modo Standalone ligero con SQLite integrado (`backend/echo.db`), sin necesidad de Docker ni dependencias externas.
+
+---
+
+## 5. Resumen de Seguridad y Privacidad
+
+* **Cero Filtración de Datos en Modo Mesh VPN:** Las comunicaciones directas no tocan ningún servidor central ni se registran en bases de datos.
+* **Cifrado DTLS / SRTP:** El tráfico de voz, video y pantalla viaja encriptado de extremo a extremo con certificados criptográficos efímeros generados por cada dispositivo.
+* **Resistencia a Bloqueos de Operadoras (CGNAT):** Al contar con fallback a TURN Relay por los puertos HTTPS estándar (`443` y `80`), la conexión funciona incluso en redes móviles restrictivas donde el P2P directo suele estar bloqueado.

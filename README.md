@@ -55,8 +55,10 @@ Echo/
 ├── build-android-apk.ps1      # Compilador desatendido del APK nativo de Android
 ├── setup-environment.ps1      # Aprovisionamiento e instalación automática de herramientas
 ├── setup-environment.sh       # Script de aprovisionamiento para Linux / macOS
-├── start-pc.bat               # Lanzador con un doble clic del backend y frontend
-├── start-pc.ps1               # Lanzador PowerShell del entorno completo de PC
+├── start-pc.bat               # Lanzador local en red Wi-Fi/LAN (un solo clic)
+├── start-pc.ps1               # Lanzador PowerShell para red local con detección de IP
+├── start-global.bat           # Lanzador global: túnel seguro para amigos en 4G/Internet sin abrir puertos
+├── start-global.ps1           # Lanzador global PowerShell con aprovisionamiento de túnel
 ├── docker-compose.yml         # Contenedores para LiveKit, Coturn, Redis y MinIO
 ├── .gitignore                 # Reglas de exclusión para control de versiones limpio
 └── README.md                  # Este documento
