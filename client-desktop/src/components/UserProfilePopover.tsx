@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Shield } from 'lucide-react';
+import { Copy, Check, Shield, UserX, AlertTriangle } from 'lucide-react';
 import { User, Role } from '../types';
 import { DeviceStatusBadge } from './DeviceStatusBadge';
 
@@ -15,12 +15,63 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
   position,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reportReason, setReportReason] = useState('HARASSMENT');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   const copyUsername = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(`@${user.Username}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleBlockUser = async () => {
+    if (!confirm(`¿Estás seguro de que deseas bloquear a ${user.DisplayName}? No verás sus mensajes ni podrá contactarte.`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/users/${user.UserID}/block`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      setBlocked(true);
+      alert(`Has bloqueado a @${user.Username}.`);
+      onClose();
+      window.location.reload();
+    } catch {
+      alert('Error al bloquear usuario.');
+    }
+  };
+
+  const handleSendReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`/users/${user.UserID}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          Reason: reportReason,
+          Details: reportDetails,
+        }),
+      });
+      setReportSuccess(true);
+      setTimeout(() => {
+        setReporting(false);
+        setReportSuccess(false);
+        onClose();
+      }, 1500);
+    } catch {
+      alert('Error al enviar el reporte.');
+    }
   };
 
   const style: React.CSSProperties = position
@@ -104,7 +155,7 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
           </div>
 
           {/* Roles Section */}
-          <div className="bg-discord-dark/50 rounded-xl p-3 border border-white/5">
+          <div className="bg-discord-dark/50 rounded-xl p-3 border border-white/5 mb-3">
             <div className="text-[11px] font-bold uppercase tracking-wider text-discord-channel mb-2 flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5" />
               Roles
@@ -131,6 +182,90 @@ export const UserProfilePopover: React.FC<UserProfilePopoverProps> = ({
               )}
             </div>
           </div>
+
+          {/* Moderation & Safety Actions (Google Play UGC) */}
+          <div className="pt-2 border-t border-white/5 flex gap-2">
+            <button
+              type="button"
+              onClick={handleBlockUser}
+              className="flex-1 py-1.5 px-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 border border-red-500/20 transition-all active:scale-95"
+            >
+              <UserX className="w-3.5 h-3.5" />
+              Bloquear
+            </button>
+            <button
+              type="button"
+              onClick={() => setReporting(true)}
+              className="flex-1 py-1.5 px-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 text-xs font-semibold rounded-lg flex items-center justify-center gap-1 border border-yellow-500/20 transition-all active:scale-95"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Reportar
+            </button>
+          </div>
+
+          {/* Report Form Dialog */}
+          {reporting && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+              <div className="bg-discord-darkest rounded-2xl p-4 w-80 border border-white/10 shadow-2xl">
+                <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                  Reportar a @{user.Username}
+                </h4>
+                {reportSuccess ? (
+                  <div className="py-4 text-center text-xs text-green-400 font-medium">
+                    ✓ Reporte enviado. Los moderadores lo revisarán de inmediato.
+                  </div>
+                ) : (
+                  <form onSubmit={handleSendReport} className="space-y-3">
+                    <div>
+                      <label className="text-[11px] text-discord-channel font-semibold block mb-1">
+                        Motivo del reporte:
+                      </label>
+                      <select
+                        value={reportReason}
+                        onChange={(e) => setReportReason(e.target.value)}
+                        className="w-full bg-discord-dark text-xs text-white p-2 rounded-lg border border-white/10 outline-none"
+                      >
+                        <option value="HARASSMENT">Acoso o Hostigamiento</option>
+                        <option value="SPAM">Spam o Publicidad no deseada</option>
+                        <option value="HATE_SPEECH">Incitación al odio</option>
+                        <option value="INAPPROPRIATE_CONTENT">Contenido inapropiado / sexual</option>
+                        <option value="OTHER">Otro motivo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] text-discord-channel font-semibold block mb-1">
+                        Detalles adicionales:
+                      </label>
+                      <textarea
+                        value={reportDetails}
+                        onChange={(e) => setReportDetails(e.target.value)}
+                        rows={2}
+                        placeholder="Describe la situación..."
+                        className="w-full bg-discord-dark text-xs text-white p-2 rounded-lg border border-white/10 outline-none resize-none"
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setReporting(false)}
+                        className="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs text-discord-channel rounded-lg"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-xs font-bold text-black rounded-lg"
+                      >
+                        Enviar Reporte
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

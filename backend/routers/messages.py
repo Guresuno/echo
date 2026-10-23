@@ -26,6 +26,10 @@ async def get_messages(channel_id: int, limit: int = 50, current_user: dict = De
     if not has_permission(perms, PermissionFlags.VIEW_CHANNELS):
         raise HTTPException(status_code=403, detail="Sin permiso para ver este canal.")
 
+    from backend.models import BlockedUserModel
+    blocked_res = await db.execute(select(BlockedUserModel.BlockedUserID).where(BlockedUserModel.UserID == user_id))
+    blocked_ids = set(blocked_res.scalars().all())
+
     res = await db.execute(
         select(MessageModel, UserModel)
         .join(UserModel, UserModel.UserID == MessageModel.SenderID)
@@ -36,6 +40,10 @@ async def get_messages(channel_id: int, limit: int = 50, current_user: dict = De
 
     items = []
     for msg, user in res.all():
+        # Google Play UGC Rule: Hide messages from blocked users
+        if user.UserID in blocked_ids:
+            continue
+
         platforms = await cache.get_user_platforms(user.UserID)
         items.append(MessageResponse(
             MessageID=msg.MessageID,

@@ -9,6 +9,8 @@ import {
   TextInput,
   StatusBar,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import {
   QrCode,
@@ -18,6 +20,8 @@ import {
   Sparkles,
   Users,
   Mic,
+  ShieldAlert,
+  X,
 } from 'lucide-react-native';
 import { getMobileHardwareId, getMobilePlatformType } from './src/services/hardwareId';
 import { QRScannerModal } from './src/components/QRScannerModal';
@@ -37,6 +41,7 @@ export default function App() {
   // Modals
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [showStudio, setShowStudio] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // Initialize and auto-login
   useEffect(() => {
@@ -152,6 +157,90 @@ export default function App() {
     }
   };
 
+  // Google Play UGC: Moderation Handlers (Block & Report)
+  const handleMessageLongPress = (item: any) => {
+    const senderName = item.SenderDisplayName || item.SenderName || 'Usuario';
+    const senderId = item.SenderID;
+
+    // Do not show moderation options on our own messages
+    if (currentUser && senderId === currentUser.UserID) return;
+
+    Alert.alert(
+      `Opciones de moderación: @${senderName}`,
+      'Selecciona una acción para mantener la comunidad segura:',
+      [
+        {
+          text: 'Bloquear Usuario',
+          style: 'destructive',
+          onPress: () => handleBlockUser(senderId, senderName),
+        },
+        {
+          text: 'Reportar Mensaje',
+          style: 'default',
+          onPress: () => handleReportUser(senderId, item.MessageID, senderName),
+        },
+        {
+          text: 'Ver Reglas de la Comunidad',
+          onPress: () => setShowTerms(true),
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const handleBlockUser = async (senderId: number, senderName: string) => {
+    try {
+      await fetch(`${API_BASE}/users/${senderId}/block`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      // Immediately filter out messages from this blocked user
+      setMessages((prev) => prev.filter((m) => m.SenderID !== senderId));
+      Alert.alert('Usuario Bloqueado', `Has bloqueado a @${senderName}. Ya no verás sus mensajes.`);
+    } catch {
+      Alert.alert('Error', 'No se pudo bloquear al usuario.');
+    }
+  };
+
+  const handleReportUser = (senderId: number, messageId: number, senderName: string) => {
+    Alert.alert(
+      `Reportar a @${senderName}`,
+      '¿Por qué motivo deseas reportar este contenido?',
+      [
+        { text: 'Acoso u Hostigamiento', onPress: () => sendReport(senderId, messageId, 'HARASSMENT') },
+        { text: 'Spam o Publicidad', onPress: () => sendReport(senderId, messageId, 'SPAM') },
+        { text: 'Contenido Inapropiado', onPress: () => sendReport(senderId, messageId, 'INAPPROPRIATE_CONTENT') },
+        { text: 'Cancelar', style: 'cancel' },
+      ]
+    );
+  };
+
+  const sendReport = async (reportedUserId: number, messageId: number, reason: string) => {
+    try {
+      await fetch(`${API_BASE}/users/${reportedUserId}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          MessageID: messageId,
+          Reason: reason,
+          Details: 'Reporte generado desde la aplicación móvil.',
+        }),
+      });
+      Alert.alert('Reporte Recibido', 'Gracias por avisarnos. El equipo de moderación revisará el caso de inmediato.');
+    } catch {
+      Alert.alert('Error', 'No se pudo enviar el reporte.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1e1f22" />
@@ -164,6 +253,15 @@ export default function App() {
         </View>
 
         <View style={styles.topActions}>
+          {/* Rules / Terms Trigger (Google Play UGC) */}
+          <TouchableOpacity
+            onPress={() => setShowTerms(true)}
+            style={styles.rulesButton}
+            title="Reglas y Términos"
+          >
+            <ShieldAlert size={18} color="#eab308" />
+          </TouchableOpacity>
+
           {/* QR Scanner for PC Login (Section 2.3) */}
           <TouchableOpacity
             onPress={() => setShowQRScanner(true)}
@@ -185,13 +283,17 @@ export default function App() {
         </View>
       </View>
 
-      {/* Messages List */}
+      {/* Messages List (with Long Press for Moderation) */}
       <FlatList
         data={messages}
         keyExtractor={(item) => item.MessageID.toString()}
         style={styles.chatList}
         renderItem={({ item }) => (
-          <View style={styles.messageRow}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onLongPress={() => handleMessageLongPress(item)}
+            style={styles.messageRow}
+          >
             <View style={styles.avatarPlaceholder}>
               <Text style={styles.avatarLetter}>
                 {(item.SenderDisplayName || item.SenderName || 'U')[0]}
@@ -211,7 +313,7 @@ export default function App() {
               </View>
               <Text style={styles.messageText}>{item.Content}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
       />
 
@@ -253,6 +355,38 @@ export default function App() {
         apiBaseUrl={API_BASE}
         accessToken={token}
       />
+
+      {/* Google Play UGC: Terms of Service & EULA Modal */}
+      <Modal visible={showTerms} animationType="slide" transparent={true}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.termsCard}>
+            <View style={styles.termsHeader}>
+              <Text style={styles.termsTitle}>Normas de la Comunidad y Términos</Text>
+              <TouchableOpacity onPress={() => setShowTerms(false)}>
+                <X size={20} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.termsBody}>
+              <Text style={styles.policyHighlight}>
+                ⚠️ Política de Tolerancia Cero: Echo no tolera acoso, incitación al odio, contenido sexual explícito, spam o comportamientos abusivos. Infringir estas normas resultará en la expulsión y bloqueo permanente de la cuenta.
+              </Text>
+              <Text style={styles.termsSectionTitle}>Reglas obligatorias para todos los usuarios:</Text>
+              <Text style={styles.termsItem}>• Trata a los demás con respeto y cortesía en salas de voz y texto.</Text>
+              <Text style={styles.termsItem}>• Queda estrictamente prohibido compartir contenido violento, ilegal o no consensuado.</Text>
+              <Text style={styles.termsItem}>• Mantén presionada cualquier conversación o mensaje para BLOQUEAR a usuarios molestos o REPORTAR mensajes para revisión inmediata por los moderadores.</Text>
+              <Text style={styles.termsItem}>• Los reportes son analizados de forma prioritaria para garantizar una comunidad segura.</Text>
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setShowTerms(false)}
+              style={styles.acceptButton}
+            >
+              <Text style={styles.acceptButtonText}>He leído y acepto las normas</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -261,6 +395,76 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#313338',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  termsCard: {
+    backgroundColor: '#1e1f22',
+    borderRadius: 16,
+    padding: 18,
+    width: '100%',
+    maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  termsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  termsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  termsBody: {
+    marginBottom: 16,
+  },
+  policyHighlight: {
+    fontSize: 12,
+    color: '#facc15',
+    backgroundColor: 'rgba(250, 204, 21, 0.1)',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  termsSectionTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  termsItem: {
+    fontSize: 12,
+    color: '#dbdee1',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  acceptButton: {
+    backgroundColor: '#5865F2',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  acceptButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  rulesButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   topBar: {
     height: 52,

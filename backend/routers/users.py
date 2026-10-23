@@ -115,3 +115,108 @@ async def upload_avatar(file: UploadFile = File(...), current_user: dict = Depen
         await db.commit()
     
     return {"AvatarURL": file_url}
+
+
+# ==============================================================================
+# GOOGLE PLAY UGC: BLOCK & REPORT MODERATION ENDPOINTS
+# ==============================================================================
+
+@router.post("/{user_id}/block")
+async def block_user(user_id: int, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    my_id = int(current_user["sub"])
+    if my_id == user_id:
+        raise HTTPException(status_code=400, detail="No puedes bloquearte a ti mismo.")
+
+    # Check if target user exists
+    target_res = await db.execute(select(UserModel).where(UserModel.UserID == user_id))
+    if not target_res.scalars().first():
+        raise HTTPException(status_code=404, detail="Usuario a bloquear no encontrado.")
+
+    from backend.models import BlockedUserModel
+    # Check if already blocked
+    existing = await db.execute(select(BlockedUserModel).where(
+        BlockedUserModel.UserID == my_id,
+        BlockedUserModel.BlockedUserID == user_id
+    ))
+    if existing.scalars().first():
+        return {"status": "already_blocked", "message": "Usuario ya está bloqueado."}
+
+    new_block = BlockedUserModel(UserID=my_id, BlockedUserID=user_id)
+    db.add(new_block)
+    await db.commit()
+    return {"status": "success", "message": f"Usuario con ID {user_id} bloqueado con éxito."}
+
+
+@router.delete("/{user_id}/block")
+async def unblock_user(user_id: int, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    my_id = int(current_user["sub"])
+    from backend.models import BlockedUserModel
+    res = await db.execute(select(BlockedUserModel).where(
+        BlockedUserModel.UserID == my_id,
+        BlockedUserModel.BlockedUserID == user_id
+    ))
+    record = res.scalars().first()
+    if not record:
+        raise HTTPException(status_code=404, detail="El usuario no estaba bloqueado.")
+
+    await db.delete(record)
+    await db.commit()
+    return {"status": "success", "message": f"Usuario con ID {user_id} desbloqueado."}
+
+
+@router.get("/me/blocked")
+async def get_blocked_users(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    my_id = int(current_user["sub"])
+    from backend.models import BlockedUserModel
+    res = await db.execute(select(BlockedUserModel.BlockedUserID).where(BlockedUserModel.UserID == my_id))
+    blocked_ids = res.scalars().all()
+    return {"blocked_user_ids": list(blocked_ids)}
+
+
+@router.post("/{user_id}/report")
+async def report_user(user_id: int, payload: dict, current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    my_id = int(current_user["sub"])
+    if my_id == user_id:
+        raise HTTPException(status_code=400, detail="No puedes reportarte a ti mismo.")
+
+    from backend.models import UserReportModel
+    reason = payload.get("Reason", "HARASSMENT")
+    details = payload.get("Details", "")
+    message_id = payload.get("MessageID")
+
+    report = UserReportModel(
+        ReporterID=my_id,
+        ReportedUserID=user_id,
+        MessageID=message_id,
+        Reason=reason,
+        Details=details,
+        Status="PENDING"
+    )
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+
+    return {
+        "status": "success",
+        "message": "Reporte enviado con éxito a los moderadores de Echo. Gracias por mantener la comunidad segura.",
+        "ReportID": report.ReportID
+    }
+
+
+@router.get("/reports/pending")
+async def get_pending_reports(current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Admin / Moderator queue for reviewing reports."""
+    from backend.models import UserReportModel
+    res = await db.execute(select(UserReportModel).order_by(UserReportModel.CreatedAt.desc()))
+    reports = res.scalars().all()
+    return [{
+        "ReportID": r.ReportID,
+        "ReporterID": r.ReporterID,
+        "ReportedUserID": r.ReportedUserID,
+        "MessageID": r.MessageID,
+        "Reason": r.Reason,
+        "Details": r.Details,
+        "Status": r.Status,
+        "CreatedAt": r.CreatedAt
+    } for r in reports]
+

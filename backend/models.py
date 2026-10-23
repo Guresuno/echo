@@ -29,6 +29,30 @@ class UserModel(Base):
     memberships = relationship("ServerMemberModel", back_populates="user", cascade="all, delete-orphan")
     messages = relationship("MessageModel", back_populates="sender")
     assets = relationship("CustomAssetModel", back_populates="creator")
+    blocked_users = relationship("BlockedUserModel", foreign_keys="BlockedUserModel.UserID", cascade="all, delete-orphan")
+    reports_sent = relationship("UserReportModel", foreign_keys="UserReportModel.ReporterID", cascade="all, delete-orphan")
+
+
+class BlockedUserModel(Base):
+    __tablename__ = "BlockedUsers"
+
+    BlockID = Column(Integer, primary_key=True, autoincrement=True)
+    UserID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), nullable=False, index=True)
+    BlockedUserID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), nullable=False, index=True)
+    CreatedAt = Column(DateTime, default=datetime.utcnow)
+
+
+class UserReportModel(Base):
+    __tablename__ = "UserReports"
+
+    ReportID = Column(Integer, primary_key=True, autoincrement=True)
+    ReporterID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), nullable=False, index=True)
+    ReportedUserID = Column(Integer, ForeignKey("Users.UserID", ondelete="CASCADE"), nullable=False, index=True)
+    MessageID = Column(Integer, nullable=True)
+    Reason = Column(String(50), nullable=False)  # SPAM, HARASSMENT, HATE_SPEECH, INAPPROPRIATE_CONTENT, OTHER
+    Details = Column(Text, nullable=True)
+    Status = Column(String(20), default="PENDING")  # PENDING, REVIEWED, RESOLVED, DISMISSED
+    CreatedAt = Column(DateTime, default=datetime.utcnow)
 
 
 class TrustedDeviceModel(Base):
@@ -187,6 +211,7 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class TokenResponse(BaseModel):
     AccessToken: str
     RefreshToken: str
@@ -285,3 +310,45 @@ class CustomAssetResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# ==============================================================================
+# GOOGLE PLAY UGC (MODERATION & COMPLIANCE SCHEMAS)
+# ==============================================================================
+
+class BlockUserRequest(BaseModel):
+    BlockedUserID: int
+
+class BlockedUserResponse(BaseModel):
+    BlockID: int
+    UserID: int
+    BlockedUserID: int
+    CreatedAt: datetime
+
+    class Config:
+        from_attributes = True
+
+class UserReportRequest(BaseModel):
+    ReportedUserID: int
+    MessageID: Optional[int] = None
+    Reason: str = "HARASSMENT"  # SPAM, HARASSMENT, HATE_SPEECH, INAPPROPRIATE_CONTENT, OTHER
+    Details: Optional[str] = None
+
+class UserReportResponse(BaseModel):
+    ReportID: int
+    ReporterID: int
+    ReportedUserID: int
+    MessageID: Optional[int] = None
+    Reason: str
+    Details: Optional[str] = None
+    Status: str
+    CreatedAt: datetime
+
+    class Config:
+        from_attributes = True
+
+class TermsOfServiceResponse(BaseModel):
+    Title: str
+    EffectiveDate: str
+    ZeroTolerancePolicy: str
+    Rules: List[str]
+

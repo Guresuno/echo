@@ -345,3 +345,30 @@ async def qr_approve(payload: dict, current_user: dict = Depends(get_current_use
     await cache.set_json(f"qr_event:{qr_token}", {"event": "APPROVED", "payload": token_payload}, ex=60)
 
     return {"status": "APPROVED", "message": "Inicio de sesión aprobado correctamente."}
+
+
+# ==============================================================================
+# GOOGLE PLAY UGC: TERMS OF SERVICE & ZERO TOLERANCE POLICY
+# ==============================================================================
+
+@router.get("/terms")
+async def get_terms_of_service():
+    """
+    Returns the official Community Guidelines & EULA required by Google Play UGC policies.
+    """
+    return {
+        "Title": "Términos de Servicio y Reglas de la Comunidad — Echo",
+        "EffectiveDate": "2026-10-23",
+        "ZeroTolerancePolicy": (
+            "Echo mantiene una política estricta de TOLERANCIA CERO ante conductas inapropiadas, "
+            "incluyendo acoso, incitación al odio, amenazas de violencia, pornografía, spam o cualquier "
+            "forma de abuso. Los usuarios que infrinjan estas reglas serán expulsados y baneados permanentemente."
+        ),
+        "Rules": [
+            "1. Respeto Mutuo: Está estrictamente prohibido el acoso, hostigamiento o discriminación a cualquier persona.",
+            "2. Contenido Prohibido: No se permite la publicación de contenido explícito, sexual, violento o ilegal.",
+            "3. Seguridad y Privacidad: No compartas información personal o privada de otros sin su consentimiento.",
+            "4. Moderación Activa: Todo usuario dispone de herramientas directas para bloquear a usuarios no deseados y reportar mensajes inapropiados.",
+            "5. Sanciones: El equipo de moderación revisa los reportes de inmediato y expulsará o baneará a los infractores sin previo aviso."
+        ]
+    }
